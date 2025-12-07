@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 declare const marked: any;
 
 // --- 1. Standard Central SOE List (Reference) ---
+// Expanded to ensure coverage for all 90+ Central SOEs
 const CENTRAL_SOES_LIST = [
   "中国核工业集团", "中国航天科技集团", "中国航天科工集团", "中国航空工业集团", "中国船舶集团", "中国兵器工业集团", "中国兵器装备集团",
   "中国电子科技集团", "中国航空发动机集团", "中国融通资产管理集团", "中国石油天然气集团", "中国石油化工集团", "中国海洋石油集团",
@@ -20,10 +21,10 @@ const CENTRAL_SOES_LIST = [
   "中国建设科技有限公司", "中国冶金地质总局", "中国煤炭地质总局", "新兴际华集团", "中国民航信息集团", "中国航空油料集团",
   "中国航空器材集团", "中国电力建设集团", "中国能源建设集团", "中国安能建设集团", "中国黄金集团", "中国广核集团",
   "中国华录集团", "华侨城集团", "南光（集团）", "中国电气装备集团", "中国物流集团", "中国国新控股", "中国检验认证（集团）",
-  "中国南水北调集团", "招商局集团", "华润（集团）", "中国旅游集团", "中国商用飞机"
+  "中国南水北调集团", "招商局集团", "华润（集团）", "中国旅游集团", "中国商用飞机", "中国节能环保集团"
 ];
 
-// --- 2. Smart Alias Mapping (Aliases -> Full Name) ---
+// --- 2. Smart Alias Mapping (Aliases -> Full Name or Keyword) ---
 const ALIAS_MAP: Record<string, string> = {
   "中石油": "中国石油天然气集团有限公司",
   "中石化": "中国石油化工集团有限公司",
@@ -34,7 +35,7 @@ const ALIAS_MAP: Record<string, string> = {
   "广核": "中国广核集团有限公司",
   "中核": "中国核工业集团有限公司",
   "中建": "中国建筑股份有限公司", 
-  "中铁": "中国铁路工程集团有限公司",
+  "中铁": "中国铁路工程集团有限公司", // Note: Search logic will handle partials to find both CREC and CRCC if user types "中铁"
   "中铁建": "中国铁道建筑集团有限公司",
   "中交": "中国交通建设集团有限公司",
   "中移动": "中国移动通信集团有限公司",
@@ -64,6 +65,10 @@ const ALIAS_MAP: Record<string, string> = {
   "通号": "中国铁路通信信号集团有限公司",
   "中旅": "中国旅游集团有限公司",
   "商飞": "中国商用飞机有限责任公司",
+  "南航": "中国南方航空集团有限公司",
+  "东航": "中国东方航空集团有限公司",
+  "中国节能": "中国节能环保集团有限公司",
+  "中节能": "中国节能环保集团有限公司",
   // New Additions
   "中航工业": "中国航空工业集团有限公司",
   "航空工业": "中国航空工业集团有限公司",
@@ -78,46 +83,35 @@ const ALIAS_MAP: Record<string, string> = {
   "航天科工": "中国航天科工集团有限公司",
 };
 
-// --- 3. SASAC Scores & Data (Mocked/Static for Demo) ---
-// Structure: { Year: { CompanyName: { Grade, Score } } }
-// Since we typically only have the "A-List", we will default to "A级" and add scores if known.
-const SASAC_DB: Record<string, { grade: string, score?: string }> = {
-  "中国核工业集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国航天科技集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国航天科工集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国航空工业集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国船舶集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国兵器工业集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国电子科技集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国石油天然气集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国石油化工集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国海洋石油集团有限公司": { grade: "A级", score: "考核优秀" },
-  "国家电网有限公司": { grade: "A级", score: "考核优秀" },
-  "中国南方电网有限责任公司": { grade: "A级", score: "考核优秀" },
-  "中国华能集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国大唐集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国华电集团有限公司": { grade: "A级", score: "考核优秀" },
-  "国家电力投资集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国长江三峡集团有限公司": { grade: "A级", score: "考核优秀" },
-  "国家能源投资集团有限责任公司": { grade: "A级", score: "考核优秀" },
-  "中国电信集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国移动通信集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国电子信息产业集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国第一汽车集团有限公司": { grade: "A级", score: "考核优秀" },
-  "东风汽车集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国机械工业集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国宝武钢铁集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国远洋海运集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国航空集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国中化控股有限责任公司": { grade: "A级", score: "考核优秀" },
-  "中粮集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国建筑集团有限公司": { grade: "A级", score: "考核优秀" },
-  "招商局集团有限公司": { grade: "A级", score: "考核优秀" },
-  "华润（集团）有限公司": { grade: "A级", score: "考核优秀" },
-  "中国广核集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国中车集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国保利集团有限公司": { grade: "A级", score: "考核优秀" },
-  "中国建设科技有限公司": { grade: "A级", score: "考核优秀" }
+// --- 3. SASAC Rank Database (Top 50 A-Grade) ---
+// Key: App Year (e.g., 2025 means published in 2025 for 2024 performance)
+// Value: Ordered Array of Company Names (Indices + 1 = Rank)
+// Note: We use flexible matching keys (shortened or full) to match against unifiedDB names.
+const SASAC_RANK_DB = {
+  // 2024 Performance (Published July 2025) -> Fits App Year 2025
+  2025: [
+    "国家电网", "中国石油天然气", "中国移动", "国家能源", "中国海洋石油", "国家电力投资", "中国南方电网", "中国华能", "中国华电", "中国石油化工",
+    "中国核工业", "中国电信", "中国远洋海运", "华润", "中国长江三峡", "中国铝业", "中国广核", "招商局", "中国电子科技", "国家石油天然气管网",
+    "中国联合网络", "中国航天科技", "中国大唐", "中国中车", "中国中煤", "中国船舶", "中国兵器工业", "中国电子信息", "中国航空工业", "中国兵器装备",
+    "中国宝武", "中国国新", "中国诚通", "中国航天科工", "中国煤炭科工", "中国电气装备", "东风汽车", "中国第一汽车", "国家开发投资", "中国东方电气",
+    "中国钢研", "哈尔滨电气", "中国机械工业", "中国铁路通信", "中国五矿", "中国有色矿业", "中国南方航空", "中国东方航空", "中国航空集团", "中国信息通信"
+  ],
+  // 2023 Performance (Published July 2024) -> Fits App Year 2024
+  2024: [
+    "中国移动", "招商局", "国家电网", "中国石油天然气", "中国长江三峡", "国家电力投资", "中国海洋石油", "中国石油化工", "中国南方电网", "中国电信",
+    "国家能源", "中国核工业", "中国华电", "中国华能", "中国电子科技", "国家石油天然气管网", "中国广核", "华润", "中国联合网络", "中国中煤",
+    "中国船舶", "中国远洋海运", "中国中车", "国家开发投资", "中国建筑", "中国第一汽车", "中国兵器装备", "中国大唐", "中国五矿", "中国航空发动机",
+    "中国兵器工业", "中国宝武", "中国东方电气", "中国煤炭科工", "中国铝业", "中国交通建设", "中国通用技术", "中国电子信息", "中国电气装备", "中国有色矿业",
+    "中国钢研", "中国铁路通信", "中国化学工程", "中国南方航空", "中粮", "中国东方航空", "中国建材", "中国航空集团", "中国保利"
+  ],
+  // 2022 Performance (Published July 2023) -> Fits App Year 2023
+  2023: [
+    "中国海洋石油", "中国石油化工", "中国石油天然气", "中国移动", "招商局", "中国电子科技", "国家能源", "中国远洋海运", "国家电网", "华润",
+    "中国第一汽车", "国家电力投资", "中国华电", "中国华能", "中国航天科技", "中国中煤", "中国广核", "中国核工业", "中国船舶", "国家石油天然气管网",
+    "中国电信", "中国中车", "中国南方电网", "中国铁路工程", "中国联合网络", "中国中化", "国家开发投资", "中国长江三峡", "中国航空工业", "中国航天科工",
+    "中国铝业", "中国建筑", "中国国新", "中国兵器装备", "中国五矿", "中国铁道建筑", "中国航空发动机", "中国大唐", "中国建材", "中国化学工程",
+    "中国机械工业", "中国有色矿业", "中国宝武", "中粮", "中国兵器工业", "中国保利", "中国交通建设", "中国诚通", "中国东方电气"
+  ]
 };
 
 // --- 4. Supplementary Data (For SOEs outside Top 120 or Missing from Raw Data) ---
@@ -604,13 +598,14 @@ interface ProcessedCompanyData extends BaseCompanyData {
 interface RankedResult {
   year: number;
   companyName: string;
-  revenue: number; // raw value
+  revenue: string; // formatted or '/'
   rankSASAC: string;
   rankSASACScore: string;
   rankChina500: string;
   rankFortune500: string;
   rankCentralSOE: string;
   isEstimate: boolean;
+  isGhost?: boolean; // True if just a central SOE with no revenue data
 }
 
 // --- App Component ---
@@ -649,6 +644,25 @@ const App = () => {
     2023: parseRawData(RAW_DATA_2023)
   }), []);
 
+  // Helper to find specific SASAC Rank for a company in a year
+  const getSASACRank = (year: number, companyName: string): string => {
+    // @ts-ignore
+    const rankList = SASAC_RANK_DB[year] as string[] | undefined;
+    if (!rankList) return "/";
+    
+    // Exact match in rank list
+    const exactIdx = rankList.indexOf(companyName);
+    if (exactIdx !== -1) return `A级 (第${exactIdx + 1}名)`;
+
+    // Partial match in rank list (e.g. "中石油" matched "中国石油天然气集团有限公司")
+    const partialIdx = rankList.findIndex(item => 
+      item.includes(companyName) || companyName.includes(item)
+    );
+    if (partialIdx !== -1) return `A级 (第${partialIdx + 1}名)`;
+
+    return "/";
+  };
+
   // 2. Build the "Grand Unified Database" (Merged Local + Supplement + Ratings + Fortune)
   const unifiedDB = useMemo(() => {
     const db: Record<number, ProcessedCompanyData[]> = { 2025: [], 2024: [], 2023: [] };
@@ -673,13 +687,12 @@ const App = () => {
                    rank: yearData[y].china500 || 999,
                    name: name,
                    revenue: yearData[y].revenue,
-                   sasac: yearData[y].sasac,
+                   sasac: "/", // Will be overwritten dynamically
                    fortune: yearData[y].fortune,
                    isSupplementary: true
                 });
             } else {
                const existing = companyMap.get(name)!;
-               if (yearData[y].sasac) existing.sasac = yearData[y].sasac;
                if (yearData[y].fortune) existing.fortune = yearData[y].fortune;
             }
          }
@@ -687,11 +700,8 @@ const App = () => {
 
       // D. Apply Static Global Ratings
       companyMap.forEach(company => {
-         // SASAC (Apply to all available years as a baseline)
-         if (SASAC_DB[company.name]) {
-             if (!company.sasac) company.sasac = SASAC_DB[company.name].grade;
-             if (!company.sasacScore) company.sasacScore = SASAC_DB[company.name].score;
-         }
+         // Apply SASAC from DB based on exact or partial name
+         company.sasac = getSASACRank(y, company.name);
          
          // Fortune 500 (Inject static DB with Fuzzy Fallback)
          if (!company.fortune || company.fortune === "N/A") {
@@ -699,8 +709,6 @@ const App = () => {
                  company.fortune = FORTUNE_DB[company.name][y];
              } else {
                  // Fuzzy search in Fortune DB
-                 // e.g. "China General Nuclear Power Group" might match "CGN Power" in a real scenario
-                 // Here we simply check if any key in Fortune DB partially matches
                  const fuzzyKey = Object.keys(FORTUNE_DB).find(fKey => 
                      company.name.includes(fKey) || fKey.includes(company.name.replace("集团有限公司", "").replace("有限公司", ""))
                  );
@@ -726,28 +734,86 @@ const App = () => {
   const resolveEnterpriseName = (input: string): string => {
     const cleanInput = input.trim();
     if (ALIAS_MAP[cleanInput]) return ALIAS_MAP[cleanInput];
-    const aliasMatch = Object.keys(ALIAS_MAP).find(k => cleanInput.includes(k));
-    if (aliasMatch) return ALIAS_MAP[aliasMatch];
+    // If input matches a partial alias key (e.g. "南航" matches "南航"), return value.
+    const aliasMatch = Object.keys(ALIAS_MAP).find(k => cleanInput.includes(k) || k.includes(cleanInput));
+    if (aliasMatch && ALIAS_MAP[aliasMatch]) return ALIAS_MAP[aliasMatch];
     return cleanInput;
   };
 
-  const findCompanyInYear = (year: number, resolvedName: string, originalInput: string) => {
+  // Improved to return ALL matches
+  const findCompaniesInYear = (year: number, searchInput: string) => {
     const dataset = unifiedDB[year];
-    if (!dataset) return null;
-    let match = dataset.find(c => c.name === resolvedName);
-    if (!match) match = dataset.find(c => c.name.includes(resolvedName));
-    if (!match && originalInput.length >= 2) {
-       match = dataset.find(c => c.name.includes(originalInput));
+    const results: ProcessedCompanyData[] = [];
+    const lowerInput = searchInput.trim();
+    
+    // 1. Direct Alias Resolve
+    const directResolved = resolveEnterpriseName(lowerInput);
+    
+    // 2. Identify potential targets from CENTRAL_SOES_LIST + Alias Targets
+    // This allows "中铁" to match both "中国铁路工程" and "中国铁道建筑" if mapped or contained
+    const potentialNames = new Set<string>();
+    
+    if (directResolved) potentialNames.add(directResolved);
+    
+    // Add fuzzy matches from Central SOE list
+    CENTRAL_SOES_LIST.forEach(soe => {
+        if (soe.includes(lowerInput) || lowerInput.includes(soe)) {
+            potentialNames.add(soe);
+        }
+    });
+
+    // Also check ALIAS_MAP keys for partial matches to user input
+    Object.keys(ALIAS_MAP).forEach(alias => {
+       if (lowerInput.includes(alias)) {
+          potentialNames.add(ALIAS_MAP[alias]);
+       }
+    });
+
+    // 3. Search in DB
+    potentialNames.forEach(targetName => {
+        if (!dataset) return;
+        // Search in dataset
+        const matches = dataset.filter(c => c.name.includes(targetName) || targetName.includes(c.name));
+        matches.forEach(m => results.push(m));
+        
+        // If not found in dataset but is a Central SOE, create a "Ghost" entry
+        if (matches.length === 0 && isCentralSOE(targetName)) {
+             // Create a dummy entry for display if valid central SOE
+             // But we need a display name. We use targetName.
+             // Deduplicate: Don't add if we already have a result with this name
+             if (!results.find(r => r.name === targetName)) {
+                results.push({
+                    rank: 9999, // Unknown
+                    name: targetName,
+                    revenue: 0,
+                    sasac: getSASACRank(year, targetName),
+                    fortune: "N/A",
+                    isSupplementary: false,
+                    isGhost: true // Marker
+                } as any);
+             }
+        }
+    });
+
+    // 4. Fallback: If no potential names derived, search dataset directly with input
+    if (potentialNames.size === 0 && dataset) {
+         const matches = dataset.filter(c => c.name.includes(lowerInput));
+         matches.forEach(m => results.push(m));
     }
-    return match;
+
+    // Deduplicate results by name
+    const uniqueResults = new Map();
+    results.forEach(r => uniqueResults.set(r.name, r));
+    return Array.from(uniqueResults.values());
   };
 
   const calculateSOERank = (year: number, targetRevenue: number) => {
+    if (targetRevenue === 0) return "/";
     const dataset = unifiedDB[year];
     const soeList = dataset.filter(c => isCentralSOE(c.name));
     soeList.sort((a, b) => b.revenue - a.revenue);
     const rank = soeList.filter(c => c.revenue > targetRevenue).length + 1;
-    return rank;
+    return rank.toString();
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -764,35 +830,46 @@ const App = () => {
     setError(null);
     setResults([]);
 
-    const resolvedName = resolveEnterpriseName(enterpriseName);
     const years = selectedYear === 'all' ? [2025, 2024, 2023] : [parseInt(selectedYear)];
     const localResults: RankedResult[] = [];
 
     years.forEach(year => {
-       const company = findCompanyInYear(year, resolvedName, enterpriseName);
-       if (company) {
-           const soeRank = calculateSOERank(year, company.revenue);
+       const companies = findCompaniesInYear(year, enterpriseName);
+       companies.forEach(company => {
+           // @ts-ignore
+           const isGhost = company.isGhost === true;
+           const soeRank = isGhost ? "/" : calculateSOERank(year, company.revenue);
+           const revDisplay = isGhost ? "/" : formatRevenue(company.revenue);
+           const rankChina500 = isGhost ? "/" : company.rank.toString();
+
            localResults.push({
                year,
                companyName: company.name,
-               revenue: company.revenue,
-               rankChina500: company.rank.toString(),
-               rankCentralSOE: soeRank.toString(),
-               rankSASAC: company.sasac || "N/A",
-               rankSASACScore: company.sasacScore || "-",
-               rankFortune500: company.fortune || "N/A",
-               isEstimate: !!company.isSupplementary
+               revenue: revDisplay,
+               rankChina500: rankChina500,
+               rankCentralSOE: soeRank,
+               rankSASAC: company.sasac || "/",
+               rankSASACScore: "", // Removed detailed score, using rank text instead
+               rankFortune500: company.fortune || "/",
+               isEstimate: !!company.isSupplementary,
+               isGhost: isGhost
            });
-       }
+       });
     });
 
     if (localResults.length > 0) {
-        setResults(localResults.sort((a, b) => b.year - a.year));
+        // Sort by Year (desc), then by Revenue (desc) or Ghost last
+        setResults(localResults.sort((a, b) => {
+            if (b.year !== a.year) return b.year - a.year;
+            // Handle '/' revenues
+            const revA = a.revenue === '/' ? -1 : parseFloat(a.revenue);
+            const revB = b.revenue === '/' ? -1 : parseFloat(b.revenue);
+            return revB - revA;
+        }));
     } else {
-        setError(`暂时没有查到，目前仅支持国资委网站列出的央企`);
+        setError(`未找到相关央企信息。请确认名称是否为国资委监管的中央企业。`);
     }
     
-    // Immediate return (No AI)
     setLoading(false);
   };
 
@@ -803,19 +880,18 @@ const App = () => {
 
   const formatRevenue = (val: number) => {
     // Raw is 10k yuan -> convert to 100M yuan (Yi)
-    // 1 Yi = 10,000 Wan
     const yi = val / 10000;
     return yi.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-10 px-4 sm:px-6">
-      <div className="max-w-5xl w-full space-y-8">
+      <div className="max-w-6xl w-full space-y-8">
         
         <div className="text-center">
           <h1 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">央企营收多维排名查询</h1>
           <p className="mt-2 text-slate-600">
-            集成国资委考核、中国企业500强、财富中国500强及央企专项排名 (本地数据库版)
+            集成国资委业绩考核排名 (A级榜单)、中国企业500强、财富中国500强
           </p>
         </div>
 
@@ -828,7 +904,7 @@ const App = () => {
                 id="enterprise"
                 value={enterpriseName}
                 onChange={(e) => setEnterpriseName(e.target.value)}
-                placeholder="支持简称，如：中广核、中石油、国网"
+                placeholder="支持简称，如：南航、中铁、中国节能"
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
               />
             </div>
@@ -893,7 +969,7 @@ const App = () => {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">榜单年份 (财年)</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">企业全称</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">营业收入 (亿元)</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">① 国资委业绩</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">① 国资委业绩 (A级排名)</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">② 中国企业500强</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">③ 财富中国500强</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-green-600 uppercase tracking-wider">④ 央企营收排名</th>
@@ -911,10 +987,9 @@ const App = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                           {row.companyName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">{formatRevenue(row.revenue)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">{row.revenue}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
                          {row.rankSASAC}
-                         {row.rankSASACScore && row.rankSASACScore !== "-" && <span className="block text-xs text-blue-500 mt-1">{row.rankSASACScore}</span>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.rankChina500}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{row.rankFortune500}</td>
@@ -929,11 +1004,11 @@ const App = () => {
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 space-y-2">
                <p><strong>数据说明：</strong></p>
                <ul className="list-disc pl-4 space-y-1">
-                 <li><strong>年份说明</strong>：榜单年份通常基于企业上一年度的财务数据（如：2025榜单对应2024年营收）。</li>
-                 <li><strong>① 国资委业绩</strong>：基于本地数据库存储的中央企业负责人经营业绩考核结果。</li>
-                 <li><strong>② 中国企业500强</strong>：数据源为《中国企业500强》Top120原始榜单。</li>
-                 <li><strong>③ 财富中国500强</strong>：财富中国500强（Fortune China 500）可能采用上市公司而非集团合并报表数据，因此排名与营收可能与中国企业500强（中企联）存在较大出入。系统已尝试进行关联匹配。</li>
-                 <li><strong>④ 央企营收排名</strong>：实时计算值。系统根据当年所有已录入央企的营收进行动态排序得出。</li>
+                 <li><strong>年份对应</strong>：2025年榜单对应2024年度数据；2024年榜单对应2023年度数据；2023年榜单对应2022年度数据。</li>
+                 <li><strong>① 国资委业绩</strong>：数据来源于国资委公布的《中央企业负责人经营业绩考核A级企业名单》。仅列出公开的A级排名（通常为前50名），未上榜或未公开名次的央企显示为“/”。</li>
+                 <li><strong>② 中国企业500强</strong>：数据源为《中国企业500强》Top120原始榜单。未入围Top120的央企显示为“/”。</li>
+                 <li><strong>③ 财富中国500强</strong>：因统计口径差异（可能采用上市公司数据），排名可能与中企联榜单有出入。</li>
+                 <li><strong>④ 央企营收排名</strong>：系统内实时计算值。如无营收数据则不参与排名。</li>
                </ul>
             </div>
           </div>

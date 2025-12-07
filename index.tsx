@@ -7,21 +7,22 @@ declare const marked: any;
 
 // --- 1. Standard Central SOE List (Reference) ---
 // Expanded to ensure coverage for all 90+ Central SOEs
+// Updated to use Full Names to match ALIAS_MAP targets and prevent duplication
 const CENTRAL_SOES_LIST = [
-  "中国核工业集团", "中国航天科技集团", "中国航天科工集团", "中国航空工业集团", "中国船舶集团", "中国兵器工业集团", "中国兵器装备集团",
-  "中国电子科技集团", "中国航空发动机集团", "中国融通资产管理集团", "中国石油天然气集团", "中国石油化工集团", "中国海洋石油集团",
-  "国家石油天然气管网集团", "国家电网", "中国南方电网", "中国华能集团", "中国大唐集团", "中国华电集团", "国家电力投资集团",
-  "中国长江三峡集团", "国家能源投资集团", "中国电信集团", "中国联合网络通信集团", "中国移动通信集团", "中国卫星网络集团",
-  "中国电子信息产业集团", "中国第一汽车集团", "东风汽车集团", "中国一重集团", "中国机械工业集团", "哈尔滨电气集团",
-  "中国东方电气集团", "鞍钢集团", "中国宝武钢铁集团", "中国矿产资源集团", "中国铝业集团", "中国远洋海运集团", "中国航空集团",
-  "中国东方航空集团", "中国南方航空集团", "中国中化控股有限责任公司", "中粮集团", "中国诚通控股集团", "中国煤炭科工集团",
-  "中国机械科学研究总院集团", "中国盐业集团", "中国建材集团", "中国有色矿业集团", "中国稀土集团", "有研科技集团", "矿冶科技集团",
-  "中国国际工程咨询", "中国中车集团", "中国铁路通信信号集团", "中国铁路工程集团", "中国铁道建筑集团", "中国交通建设集团",
-  "中国普天信息产业集团", "中国信息通信科技集团", "中国农业发展集团", "中国林业集团", "中国医药集团", "中国保利集团",
-  "中国建设科技有限公司", "中国冶金地质总局", "中国煤炭地质总局", "新兴际华集团", "中国民航信息集团", "中国航空油料集团",
-  "中国航空器材集团", "中国电力建设集团", "中国能源建设集团", "中国安能建设集团", "中国黄金集团", "中国广核集团",
-  "中国华录集团", "华侨城集团", "南光（集团）", "中国电气装备集团", "中国物流集团", "中国国新控股", "中国检验认证（集团）",
-  "中国南水北调集团", "招商局集团", "华润（集团）", "中国旅游集团", "中国商用飞机", "中国节能环保集团"
+  "中国核工业集团有限公司", "中国航天科技集团有限公司", "中国航天科工集团有限公司", "中国航空工业集团有限公司", "中国船舶集团有限公司", "中国兵器工业集团有限公司", "中国兵器装备集团有限公司",
+  "中国电子科技集团有限公司", "中国航空发动机集团有限公司", "中国融通资产管理集团有限公司", "中国石油天然气集团有限公司", "中国石油化工集团有限公司", "中国海洋石油集团有限公司",
+  "国家石油天然气管网集团有限公司", "国家电网有限公司", "中国南方电网有限责任公司", "中国华能集团有限公司", "中国大唐集团有限公司", "中国华电集团有限公司", "国家电力投资集团有限公司",
+  "中国长江三峡集团有限公司", "国家能源投资集团有限责任公司", "中国电信集团有限公司", "中国联合网络通信集团有限公司", "中国移动通信集团有限公司", "中国卫星网络集团有限公司",
+  "中国电子信息产业集团有限公司", "中国第一汽车集团有限公司", "东风汽车集团有限公司", "中国一重集团有限公司", "中国机械工业集团有限公司", "哈尔滨电气集团有限公司",
+  "中国东方电气集团有限公司", "鞍钢集团有限公司", "中国宝武钢铁集团有限公司", "中国矿产资源集团有限公司", "中国铝业集团有限公司", "中国远洋海运集团有限公司", "中国航空集团有限公司",
+  "中国东方航空集团有限公司", "中国南方航空集团有限公司", "中国中化控股有限责任公司", "中粮集团有限公司", "中国诚通控股集团有限公司", "中国煤炭科工集团有限公司",
+  "中国机械科学研究总院集团有限公司", "中国盐业集团有限公司", "中国建材集团有限公司", "中国有色矿业集团有限公司", "中国稀土集团有限公司", "有研科技集团有限公司", "矿冶科技集团有限公司",
+  "中国国际工程咨询有限公司", "中国中车集团有限公司", "中国铁路通信信号集团有限公司", "中国铁路工程集团有限公司", "中国铁道建筑集团有限公司", "中国交通建设集团有限公司",
+  "中国普天信息产业集团有限公司", "中国信息通信科技集团有限公司", "中国农业发展集团有限公司", "中国林业集团有限公司", "中国医药集团有限公司", "中国保利集团有限公司",
+  "中国建设科技有限公司", "中国冶金地质总局", "中国煤炭地质总局", "新兴际华集团有限公司", "中国民航信息集团有限公司", "中国航空油料集团有限公司",
+  "中国航空器材集团有限公司", "中国电力建设集团有限公司", "中国能源建设集团有限公司", "中国安能建设集团有限公司", "中国黄金集团有限公司", "中国广核集团有限公司",
+  "中国华录集团有限公司", "华侨城集团有限公司", "南光（集团）有限公司", "中国电气装备集团有限公司", "中国物流集团有限公司", "中国国新控股有限责任公司", "中国检验认证（集团）有限公司",
+  "中国南水北调集团有限公司", "招商局集团有限公司", "华润（集团）有限公司", "中国旅游集团有限公司", "中国商用飞机有限责任公司", "中国节能环保集团有限公司"
 ];
 
 // --- 2. Smart Alias Mapping (Aliases -> Full Name or Keyword) ---
@@ -746,7 +747,7 @@ const App = () => {
     const results: ProcessedCompanyData[] = [];
     const lowerInput = searchInput.trim();
     
-    // 1. Direct Alias Resolve
+    // 1. Direct Alias Resolve (Exact Match priority)
     const directResolved = resolveEnterpriseName(lowerInput);
     
     // 2. Identify potential targets from CENTRAL_SOES_LIST + Alias Targets
@@ -762,11 +763,30 @@ const App = () => {
         }
     });
 
-    // Also check ALIAS_MAP keys for partial matches to user input
-    Object.keys(ALIAS_MAP).forEach(alias => {
-       if (lowerInput.includes(alias)) {
-          potentialNames.add(ALIAS_MAP[alias]);
-       }
+    // Smart Alias Matching Logic
+    const aliasKeys = Object.keys(ALIAS_MAP);
+    
+    // Set A: Input includes Alias (e.g. "中电科" includes "中电")
+    // Fix: Prioritize the longest matching alias to avoid partial matches (e.g. finding "中电" when user typed "中电科")
+    const containedAliases = aliasKeys.filter(alias => lowerInput.includes(alias));
+    // Sort by length desc
+    containedAliases.sort((a, b) => b.length - a.length);
+    
+    if (containedAliases.length > 0) {
+        // Only use the best/longest match for this direction.
+        // This ensures if user types "中电科", we match "中电科" (CETC) and ignore "中电" (CEC).
+        const bestAlias = containedAliases[0];
+        potentialNames.add(ALIAS_MAP[bestAlias]);
+    }
+
+    // Set B: Alias includes Input (e.g. "中铁建" includes "中铁")
+    // We want ALL of these to support the expansion feature (e.g. user searching "中铁" gets both CREC and CRCC)
+    // Constraint: Input must be at least 2 chars to avoid matching everything with "中" or "国"
+    const expandingAliases = aliasKeys.filter(alias => 
+        lowerInput.length >= 2 && alias.includes(lowerInput)
+    );
+    expandingAliases.forEach(alias => {
+        potentialNames.add(ALIAS_MAP[alias]);
     });
 
     // 3. Search in DB
